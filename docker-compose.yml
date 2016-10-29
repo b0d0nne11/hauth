@@ -1,0 +1,20 @@
+version: '2'
+services:
+  app:
+    image: b0d0nne11/hauth:latest
+    ports:
+      - "8080:8080"
+  db:
+    image: postgres:9.5
+    environment:
+      POSTGRES_USER: hauth
+      POSTGRES_DB: hauth
+      POSTGRES_PASSWORD: ''
+    ports:
+      - "5432:5432"
+  swagger:
+    image: schickling/swagger-ui
+    environment:
+      API_URL: http://localhost:8080/swagger.yaml
+    ports:
+      - "8081:80"

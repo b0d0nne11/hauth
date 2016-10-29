@@ -1,0 +1,94 @@
+name:                hauth
+version:             0.1.0
+synopsis:            Hauth is an open-source authentication service
+description:         Please see README.md
+homepage:            https://github.com/b0d0nne11/hauth/blob/master/README.md
+license:             Apache-2.0
+license-file:        LICENSE
+author:              Brendan ODonnell
+maintainer:          Brendan ODonnell <brendan.james.odonnell@gmail.com>
+-- copyright:
+category:            Web
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Application
+                     , Helpers
+                     , Schema
+                     , Site
+                     , Types
+                     , Models.Account
+                     , Models.Domain
+                     , Models.User
+                     , Models.Token
+                     , Handlers.Account
+                     , Handlers.Domain
+                     , Handlers.Token
+                     , Handlers.User
+  build-depends:       base
+                     , mtl
+                     , lens
+                     , bytestring
+                     , containers
+                     , transformers
+                     , snap
+                     , snap-core
+                     , snap-cors
+                     , snaplet-persistent
+                     , snaplet-jwt
+                     , persistent
+                     , persistent-template
+                     , esqueleto
+                     , time
+                     , aeson
+                     , text
+                     , scrypt
+                     , email-validate
+  ghc-options:         -Wall -fno-warn-orphans -Werror
+  default-language:    Haskell2010
+
+executable hauth-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  build-depends:       base
+                     , hauth
+                     , snap
+                     , snap-core
+                     , snap-server
+                     , snap-loader-static
+                     , snap-loader-dynamic
+                     , text
+  ghc-options:         -Wall -fno-warn-orphans -Werror -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+test-suite hauth-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  other-modules:       Handlers.DomainSpec
+                     , Handlers.TokenSpec
+                     , Handlers.AccountSpec
+                     , Handlers.UserSpec
+  build-depends:       base
+                     , hauth
+                     , snap
+                     , snap-core
+                     , snaplet-jwt
+                     , snaplet-persistent
+                     , transformers
+                     , bytestring
+                     , text
+                     , time
+                     , persistent
+                     , email-validate
+                     , hspec
+                     , hspec-snap
+  ghc-options:         -Wall -fno-warn-orphans -Werror -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/b0d0nne11/hauth

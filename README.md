@@ -1,0 +1,121 @@
+# Hauth
+
+Hauth is an open-source user management and authentication application based on
+Haskell's [Snap](http://snapframework.com/) framework.
+
+## Collections
+
+### Domains
+
+Domains are a collection of account, user, and token resources.
+
+Example:
+```json
+{
+  "domain_id": 1,
+  "name": "example.com"
+}
+```
+
+### Accounts
+
+Accounts represent an individual tenant in a domain. Accounts may have many users.
+
+Example:
+```json
+{
+  "domain_id": 1,
+  "account_id": 1,
+  "name": "ACME"
+}
+```
+
+### Users
+
+Users represent an individual user in a domain. Users may belong to many accounts.
+
+Example:
+```json
+{
+  "domain_id": 1,
+  "user_id": 1,
+  "name": "user1",
+  "email": "user1@example.com"
+}
+```
+
+### Tokens
+
+Tokens identify an authenticated user. They use the [JSON Web
+Token](https://jwt.io/) standard.
+
+Example:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.8qZF8vbN3UpcanXFc-mPXJkOPN01-bRch8XX3rToP1U"
+}
+```
+
+## Building and Testing
+
+Compile the project with:
+```bash
+make
+```
+
+Run the project test suite with:
+```bash
+make test
+```
+
+Install the compiled executable in `/usr/local/bin` with:
+```bash
+sudo make install
+```
+
+Cleanup the stack build space with:
+```bash
+make clean
+```
+
+## Docker
+
+Build a docker container with:
+```bash
+make docker
+```
+
+Start the docker container and dependancies with:
+```bash
+docker-compose up -d
+```
+
+This will by default create an application, database, and Swagger-UI container.
+
+Or run just the application container with:
+```bash
+docker run --name hauth -p 8080:8080 b0d0nne11/hauth:latest
+```
+
+ The application container's default command will run the API process using the
+ `docker` environment. As a result, the process will use the configuration
+ files at `snaplets/*/docker.cfg`. Use volume mounts to override them if
+ neccesary.
+
+## Documentation
+
+The documentation is provided in several parts.
+
+The module documentation is written inline with the code using
+[Haddock](https://www.haskell.org/haddock/). You can compile it with:
+```bash
+make haddock
+```
+
+The HTTP API specification is written using the [Swagger](http://swagger.io/)
+framework and is located at `static/swagger.yaml`. It is available from the web
+interface at `/swagger.yaml` or to explore using a swagger-ui interface by
+running:
+```bash
+make swagger
+```

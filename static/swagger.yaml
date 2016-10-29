@@ -1,0 +1,942 @@
+swagger: '2.0'
+info:
+  title: Hauth API
+  description: An authentication service designed for modern infrastructures
+  version: "0.1.0"
+host: localhost:8080
+schemes:
+  - http
+basePath: /
+consumes:
+  - text/plain; charset=utf-8
+  - application/json
+produces:
+  - application/json
+paths:
+  /domains:
+    get:
+      summary: List domains
+      description: |
+        Domains are a collection of account, user, and token resources
+      parameters:
+        - name: name
+          in: query
+          description: Filter by domain name
+          required: false
+          type: string
+        - name: order
+          in: query
+          description: List sorting order
+          required: false
+          type: string
+          enum:
+            - "asc"
+            - "desc"
+        - name: limit
+          in: query
+          description: List item limit
+          required: false
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 100
+        - name: after
+          in: query
+          description: List lower bound
+          required: false
+          type: integer
+        - name: before
+          in: query
+          description: List upper bound
+          required: false
+          type: integer
+      tags:
+        - Domains
+      responses:
+        200:
+          description: A list of domains
+          schema:
+            $ref: '#/definitions/Domains'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          500:
+            statusCode: 500
+    post:
+      summary: Create domain
+      description: |
+        Domains are a collection of account, user, and token resources
+      consumes:
+        - application/json
+      parameters:
+        - name: domain
+          in: body
+          description: Domain
+          required: true
+          schema:
+            $ref: '#/definitions/DomainParams'
+      tags:
+        - Domains
+      responses:
+        302:
+          description: Redirect to new domain
+          headers:
+            Location:
+              type: string
+              description: URL
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/
+        httpMethod: POST
+        responses:
+          302:
+            statusCode: 302
+          400:
+            statusCode: 400
+          500:
+            statusCode: 500
+  /domains/{domain_id}:
+    get:
+      summary: Get domain
+      description: |
+        Domains are a collection of account, user, and token resources
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+      tags:
+        - Domains
+      responses:
+        200:
+          description: A domain
+          schema:
+            $ref: '#/definitions/Domain'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    post:
+      summary: Update domain
+      description: |
+        Domains are a collection of account, user, and token resources
+      consumes:
+        - application/json
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: domain
+          in: body
+          description: Domain
+          required: true
+          schema:
+            $ref: '#/definitions/DomainParams'
+      tags:
+        - Domains
+      responses:
+        204:
+          description: Empty response
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}
+        httpMethod: POST
+        responses:
+          204:
+            statusCode: 204
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    delete:
+      summary: Delete domain
+      description: |
+        Domains are a collection of account, user, and token resources
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+      tags:
+        - Domains
+      responses:
+        204:
+          description: Empty response
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}
+        httpMethod: DELETE
+        responses:
+          204:
+            statusCode: 204
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+  /domains/{domain_id}/accounts:
+    get:
+      summary: List accounts
+      description: |
+        Accounts represent an individual tenant in a domain
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: name
+          in: query
+          description: Filter by account name
+          required: false
+          type: string
+        - name: user_id
+          in: query
+          description: Filter by linked user
+          required: false
+          type: integer
+        - name: order
+          in: query
+          description: List sorting order
+          required: false
+          type: string
+          enum:
+            - "asc"
+            - "desc"
+        - name: limit
+          in: query
+          description: List item limit
+          required: false
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 100
+        - name: after
+          in: query
+          description: List lower bound
+          required: false
+          type: integer
+        - name: before
+          in: query
+          description: List upper bound
+          required: false
+          type: integer
+      tags:
+        - Accounts
+      responses:
+        200:
+          description: A list of accounts
+          schema:
+            $ref: '#/definitions/Accounts'
+        404:
+          description: Not Found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/accounts
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    post:
+      summary: Create account
+      description: |
+        Accounts represent an individual tenant in a domain
+      consumes:
+        - application/json
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: account
+          in: body
+          description: Account
+          required: true
+          schema:
+            $ref: '#/definitions/AccountParams'
+      tags:
+        - Accounts
+      responses:
+        302:
+          description: Redirect to new account
+          headers:
+            Location:
+              type: string
+              description: URL
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: Not Found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/accounts
+        httpMethod: POST
+        responses:
+          302:
+            statusCode: 302
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+  /domains/{domain_id}/accounts/{account_id}:
+    get:
+      summary: Get account
+      description: |
+        Accounts represent an individual tenant in a domain
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: account_id
+          in: path
+          description: Account ID
+          required: true
+          type: integer
+      tags:
+        - Accounts
+      responses:
+        200:
+          description: An account
+          schema:
+            $ref: '#/definitions/Account'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/accounts/{account_id}
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    post:
+      summary: Update account
+      description: |
+        Accounts represent an individual tenant in a domain
+      consumes:
+        - application/json
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: account_id
+          in: path
+          description: Account ID
+          required: true
+          type: integer
+        - name: account
+          in: body
+          description: Account
+          required: true
+          schema:
+            $ref: '#/definitions/AccountParams'
+      tags:
+        - Accounts
+      responses:
+        204:
+          description: Empty response
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/accounts/{account_id}
+        httpMethod: POST
+        responses:
+          204:
+            statusCode: 204
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    delete:
+      summary: Delete account
+      description: |
+        Accounts represent an individual tenant in a domain
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: account_id
+          in: path
+          description: Account ID
+          required: true
+          type: integer
+      tags:
+        - Accounts
+      responses:
+        204:
+          description: Empty response
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/accounts/{account_id}
+        httpMethod: DELETE
+        responses:
+          204:
+            statusCode: 204
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+  /domains/{domain_id}/users:
+    get:
+      summary: List user
+      description: |
+        Users represent an individual user or agent in a domain
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: name
+          in: query
+          description: Filter by user name
+          required: false
+          type: string
+        - name: account_id
+          in: query
+          description: Filter by linked account
+          required: false
+          type: integer
+        - name: order
+          in: query
+          description: List sorting order
+          required: false
+          type: string
+          enum:
+            - "asc"
+            - "desc"
+        - name: limit
+          in: query
+          description: List item limit
+          required: false
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 100
+        - name: after
+          in: query
+          description: List lower bound
+          required: false
+          type: integer
+        - name: before
+          in: query
+          description: List upper bound
+          required: false
+          type: integer
+      tags:
+        - Users
+      responses:
+        200:
+          description: A list of users
+          schema:
+            $ref: '#/definitions/Users'
+        404:
+          description: Not Found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/users
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    post:
+      summary: Create user
+      description: |
+        Users represent an individual user or agent in a domain
+      consumes:
+        - application/json
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: user
+          in: body
+          description: User
+          required: true
+          schema:
+            $ref: '#/definitions/UserParams'
+      tags:
+        - Users
+      responses:
+        302:
+          description: Redirect to new user
+          headers:
+            Location:
+              type: string
+              description: URL
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: Not Found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/users
+        httpMethod: POST
+        responses:
+          302:
+            statusCode: 302
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+  /domains/{domain_id}/users/{user_id}:
+    get:
+      summary: Get user
+      description: |
+        Users represent an individual user or agent in a domain
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: user_id
+          in: path
+          description: User ID
+          required: true
+          type: integer
+      tags:
+        - Users
+      responses:
+        200:
+          description: A user
+          schema:
+            $ref: '#/definitions/User'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/users/{user_id}
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    post:
+      summary: Update user
+      description: |
+        Users represent an individual user or agent in a domain
+      consumes:
+        - application/json
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: user_id
+          in: path
+          description: User ID
+          required: true
+          type: integer
+        - name: user
+          in: body
+          description: User
+          required: true
+          schema:
+            $ref: '#/definitions/UserParams'
+      tags:
+        - Users
+      responses:
+        204:
+          description: Empty response
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/users/{user_id}
+        httpMethod: POST
+        responses:
+          204:
+            statusCode: 204
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+    delete:
+      summary: Delete user
+      description: |
+        Users represent an individual user or agent in a domain
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: user_id
+          in: path
+          description: User ID
+          required: true
+          type: integer
+      tags:
+        - Users
+      responses:
+        204:
+          description: Empty response
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/users/{user_id}
+        httpMethod: DELETE
+        responses:
+          204:
+            statusCode: 204
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+  /domains/{domain_id}/tokens:
+    post:
+      summary: Authenticate
+      description: |
+        Authenticate a user and generate a token
+      consumes:
+        - application/json
+      parameters:
+        - name: domain_id
+          in: path
+          description: User domain ID
+          required: true
+          type: integer
+        - name: credentials
+          in: body
+          description: User credentials
+          required: true
+          schema:
+            $ref: '#/definitions/Credentials'
+      tags:
+        - Tokens
+      responses:
+        200:
+          description: Successful authentication
+          schema:
+            $ref: '#/definitions/Token'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: User not found or invalid password
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/tokens
+        httpMethod: POST
+        responses:
+          200:
+            statusCode: 200
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+  /domains/{domain_id}/tokens/{token}:
+    get:
+      summary: Validate token
+      description: |
+        Validates a token
+      parameters:
+        - name: domain_id
+          in: path
+          description: Domain ID
+          required: true
+          type: integer
+        - name: token
+          in: path
+          description: Token
+          required: true
+          type: integer
+      tags:
+        - Tokens
+      responses:
+        200:
+          description: User used to generate token
+          schema:
+            $ref: '#/definitions/User'
+        400:
+          description: Bad request
+          schema:
+            $ref: '#/definitions/Error'
+        404:
+          description: Not found
+          schema:
+            $ref: '#/definitions/Error'
+        500:
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/Error'
+      x-amazon-apigateway-integration:
+        type: http
+        uri: http://app.hauth.io/domains/{domain_id}/tokens/{token}
+        httpMethod: GET
+        responses:
+          200:
+            statusCode: 200
+          400:
+            statusCode: 400
+          404:
+            statusCode: 404
+          500:
+            statusCode: 500
+definitions:
+  Domain:
+    type: object
+    properties:
+      domain_id:
+        type: integer
+        description: Unique identifier
+      name:
+        type: string
+        description: Name
+  Domains:
+    type: array
+    items:
+      $ref: '#/definitions/Domain'
+  DomainParams:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Name
+  Account:
+    type: object
+    properties:
+      domain_id:
+        type: integer
+        description: Unique identifier
+      account_id:
+        type: integer
+        description: Unique identifier
+      name:
+        type: string
+        description: Name
+  Accounts:
+    type: array
+    items:
+      $ref: '#/definitions/Account'
+  AccountParams:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Name
+  User:
+    type: object
+    properties:
+      domain_id:
+        type: integer
+        description: Unique identifier
+      user_id:
+        type: integer
+        description: Unique identifier
+      name:
+        type: string
+        description: Name
+      email:
+        type: string
+        description: Email
+  Users:
+    type: array
+    items:
+      $ref: '#/definitions/User'
+  UserParams:
+    type: object
+    properties:
+      name:
+        type: string
+        description: Name
+      password:
+        type: string
+        description: Password
+      email:
+        type: string
+        description: Email
+  Credentials:
+    type: object
+    properties:
+      username:
+        type: string
+        description: User name
+      password:
+        type: string
+        description: User password
+  Token:
+    type: object
+    properties:
+      token:
+        type: string
+        description: JSON web token
+  Error:
+    type: object
+    properties:
+      message:
+        type: string
