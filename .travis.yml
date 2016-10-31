@@ -1,0 +1,34 @@
+sudo: false
+language: c
+
+addons:
+  postgresql: "9.4"
+  apt:
+    sources:
+      - hvr-ghc
+    packages:
+      - ghc-7.10.3
+
+env:
+  - GHC_HOME=/opt/ghc/7.10.3
+
+install:
+  - mkdir -p ~/.local/bin
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  - export PATH=$GHC_HOME/bin:$HOME/.local/bin:$PATH
+
+before_script:
+  - psql -c 'create database hauth;' -U postgres
+  - cp snaplets/jwt/travis.cfg snaplets/jwt/test.cfg
+  - cp snaplets/persist/travis.cfg snaplets/persist/test.cfg
+  - stack --no-terminal setup
+  - stack --no-terminal test --only-dependencies
+
+script:
+  - stack --no-terminal test
+
+cache:
+  directories:
+    - $HOME/.cabal
+    - $HOME/.ghc
+    - $HOME/.stack

@@ -1,5 +1,7 @@
 # Hauth
 
+[![Build Status](https://travis-ci.org/b0d0nne11/hauth.svg?branch=master)](https://travis-ci.org/b0d0nne11/hauth)
+
 Hauth is an open-source user management and authentication application based on
 Haskell's [Snap](http://snapframework.com/) framework.
 
