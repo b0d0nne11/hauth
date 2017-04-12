@@ -59,17 +59,19 @@ newDomain (CreateParams name) =
     Domain name
 
 -- | Get a list of domains
-selectDomains :: Maybe T.Text                 -- ^ Optionally filter by domain name
-              -> Page Domain                  -- ^ Pagination parameters
-              -> AppHandler ([Entity Domain]) -- ^ Returns a list of domains
+selectDomains :: Maybe T.Text               -- ^ Optionally filter by domain name
+              -> Page Domain                -- ^ Pagination parameters
+              -> AppHandler [Entity Domain] -- ^ Returns a list of domains
 selectDomains filterName page = do
     domains <- runPersist $ select $
         from $ \d -> do
-            where_ $ foldl (&&.) (val True) $ catMaybes $
-                [ (d ^. DomainName ==.) <$> val <$> filterName
-                , (d ^. DomainId    <.) <$> val <$> pageBefore page
-                , (d ^. DomainId    >.) <$> val <$> pageAfter page
-                ]
+            where_ $ foldl (&&.)
+                (val True)
+                (catMaybes [ (d ^. DomainName ==.) . val <$> filterName
+                           , (d ^. DomainId    <.) . val <$> pageBefore page
+                           , (d ^. DomainId    >.) . val <$> pageAfter page
+                           ]
+                )
             if pageOrder page == "asc"
                 then orderBy [asc  (d ^. DomainId)]
                 else orderBy [desc (d ^. DomainId)]
@@ -90,8 +92,7 @@ updateDomain :: Key Domain   -- ^ Domain ID
 updateDomain _ (UpdateParams Nothing) = return ()
 updateDomain domainId params = do
     runPersist $ update $ \d -> do
-        set d $ catMaybes $
-            [ (DomainName =.) <$> val <$> updateParamsName params ]
+        set d $ catMaybes [ (DomainName =.) . val <$> updateParamsName params ]
         where_ $ d ^. DomainId ==. val domainId
 
 -- | Delete a domain record

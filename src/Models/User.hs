@@ -88,10 +88,8 @@ getDomainUser :: Key Domain               -- ^ User domain ID
 getDomainUser domainId userId = do
     users <- runPersist $ select $
         from $ \u -> do
-            where_ $ foldl1 (&&.) $
-                [ u ^. UserDomainId ==. val domainId
-                , u ^. UserId       ==. val userId
-                ]
+            where_ $ u ^. UserDomainId ==. val domainId
+                 &&. u ^. UserId       ==. val userId
             return u
     case users of
         [u] -> return u
@@ -109,14 +107,15 @@ selectUsers domainId filterName filterEmail filterAccountId page = do
         from $ \(u `LeftOuterJoin` au `LeftOuterJoin` a) -> do
             on $ a ^. AccountId ==. au ^. AccountUserAccountId
             on $ u ^. UserId    ==. au ^. AccountUserUserId
-            where_ $ foldl1 (&&.) $ catMaybes $
-                [ (u ^. UserDomainId ==.) <$> val <$> Just domainId
-                , (u ^. UserName     ==.) <$> val <$> filterName
-                , (u ^. UserEmail    ==.) <$> val <$> filterEmail
-                , (a ^. AccountId    ==.) <$> val <$> filterAccountId
-                , (u ^. UserId        <.) <$> val <$> pageBefore page
-                , (u ^. UserId        >.) <$> val <$> pageAfter page
-                ]
+            where_ $ foldl (&&.)
+                (u ^. UserDomainId ==. val domainId)
+                (catMaybes [ (u ^. UserName  ==.) . val <$> filterName
+                           , (u ^. UserEmail ==.) . val <$> filterEmail
+                           , (a ^. AccountId ==.) . val <$> filterAccountId
+                           , (u ^. UserId     <.) . val <$> pageBefore page
+                           , (u ^. UserId     >.) . val <$> pageAfter page
+                           ]
+                )
             if pageOrder page == "asc"
                 then orderBy [asc  (u ^. UserId)]
                 else orderBy [desc (u ^. UserId)]
@@ -138,11 +137,10 @@ updateUser _ (UpdateParams Nothing Nothing Nothing) = return ()
 updateUser userId params = do
     pass' <- mapM encrypt $ updateParamsPass params
     runPersist $ update $ \u -> do
-        set u $ catMaybes $
-            [ (UserName              =.) <$> val <$> updateParamsName params
-            , (UserEmail             =.) <$> val <$> updateParamsEmail params
-            , (UserEncryptedPassword =.) <$> val <$> pass'
-            ]
+        set u $ catMaybes [ (UserName              =.) . val <$> updateParamsName params
+                          , (UserEmail             =.) . val <$> updateParamsEmail params
+                          , (UserEncryptedPassword =.) . val <$> pass'
+                          ]
         where_ $ u ^. UserId ==. val userId
 
 -- | Delete a user record

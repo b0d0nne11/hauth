@@ -79,33 +79,32 @@ getDomainAccount :: Key Domain                  -- ^ Account domain ID
 getDomainAccount domainId accountId = do
     accounts <- runPersist $ select $
         from $ \a -> do
-            where_ $ foldl1 (&&.) $
-                [ a ^. AccountDomainId ==. val domainId
-                , a ^. AccountId       ==. val accountId
-                ]
+            where_ $ a ^. AccountDomainId ==. val domainId
+                 &&. a ^. AccountId       ==. val accountId
             return a
     case accounts of
         [a] -> return a
         _ -> notFound $ printf "account %v in domain %v not found" accountId domainId
 
 -- | Get a list of accounts
-selectAccounts :: Key Domain                    -- ^ Filter by account domain ID
-               -> Maybe T.Text                  -- ^ Optionally filter by account name
-               -> Maybe (Key User)              -- ^ Optionally filter by account user ID
-               -> Page Account                  -- ^ Pagination parameters
-               -> AppHandler ([Entity Account]) -- ^ Returns a list of accounts
+selectAccounts :: Key Domain                  -- ^ Filter by account domain ID
+               -> Maybe T.Text                -- ^ Optionally filter by account name
+               -> Maybe (Key User)            -- ^ Optionally filter by account user ID
+               -> Page Account                -- ^ Pagination parameters
+               -> AppHandler [Entity Account] -- ^ Returns a list of accounts
 selectAccounts domainId filterName filterUserId page = do
     accounts <- runPersist $ select $ distinct $
         from $ \(a `LeftOuterJoin` au `LeftOuterJoin` u) -> do
             on $ u ^. UserId    ==. au ^. AccountUserUserId
             on $ a ^. AccountId ==. au ^. AccountUserAccountId
-            where_ $ foldl1 (&&.) $ catMaybes $
-                [ (a ^. AccountDomainId ==.) <$> val <$> Just domainId
-                , (a ^. AccountName     ==.) <$> val <$> filterName
-                , (u ^. UserId          ==.) <$> val <$> filterUserId
-                , (a ^. AccountId        <.) <$> val <$> pageBefore page
-                , (a ^. AccountId        >.) <$> val <$> pageAfter page
-                ]
+            where_ $ foldl (&&.)
+                (a ^. AccountDomainId ==. val domainId)
+                (catMaybes [ (a ^. AccountName ==.) . val <$> filterName
+                           , (u ^. UserId      ==.) . val <$> filterUserId
+                           , (a ^. AccountId    <.) . val <$> pageBefore page
+                           , (a ^. AccountId    >.) . val <$> pageAfter page
+                           ]
+                )
             if pageOrder page == "asc"
                 then orderBy [asc  (a ^. AccountId)]
                 else orderBy [desc (a ^. AccountId)]
@@ -126,8 +125,7 @@ updateAccount :: Key Account   -- ^ Account ID
 updateAccount _ (UpdateParams Nothing _ _) = return ()
 updateAccount accountId params = do
     runPersist $ update $ \a -> do
-        set a $ catMaybes $
-            [ (AccountName =.) <$> val <$> updateParamsName params ]
+        set a $ catMaybes [ (AccountName =.) . val <$> updateParamsName params ]
         where_ $ a ^. AccountId ==. val accountId
 
 -- | Update account user membership
@@ -137,20 +135,16 @@ updateAccountUsers :: Key Account   -- ^ Account ID
 updateAccountUsers accountId params = do
     forM_ (fromMaybe [] $ updateParamsLinkUsers params) $ \userId -> do
         rows <- runPersist $ select $ from $ \au -> do
-            where_ $ foldl1 (&&.) $
-                [ au ^. AccountUserAccountId ==. val accountId
-                , au ^. AccountUserUserId    ==. val userId
-                ]
+            where_ $ au ^. AccountUserAccountId ==. val accountId
+                 &&. au ^. AccountUserUserId    ==. val userId
             return au
         case rows of
             [Entity key _] -> return key
             _ -> runPersist $ insert $ AccountUser accountId userId
     forM_ (fromMaybe [] $ updateParamsDropUsers params) $ \userId -> do
         runPersist $ delete $ from $ \au -> do
-            where_ $ foldl1 (&&.) $
-                [ au ^. AccountUserAccountId ==. val accountId
-                , au ^. AccountUserUserId    ==. val userId
-                ]
+            where_ $ au ^. AccountUserAccountId ==. val accountId
+                 &&. au ^. AccountUserUserId    ==. val userId
 
 -- | Delete an account record
 deleteAccount :: Key Account -- ^ Account ID
