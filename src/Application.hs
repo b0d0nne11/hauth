@@ -28,7 +28,7 @@ instance HasPersistPool (Handler App App) where
     getPersistPool = with persist $ gets persistPool
 
 instance HasJWTState (Handler App App) where
-    getJWTState = with jwt $ get
+    getJWTState = with jwt get
     putJWTState = with jwt . put
 
 type AppHandler = Handler App App

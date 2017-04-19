@@ -4,88 +4,78 @@
 -- | This module contains API handlers pertaining to the 'User' object
 module Handlers.User (
     -- * API handlers
-    listUsersApi,
-    showUserApi,
-    createUserApi,
-    updateUserApi,
-    deleteUserApi,
+    listUsersHandler,
+    showUserHandler,
+    createUserHandler,
+    updateUserHandler,
+    deleteUserHandler,
     -- * Utility functions
     userUrl
   ) where
 
-import           Data.Aeson            (ToJSON, object, toJSON, (.=))
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as C
-import           Database.Persist      (Entity (..))
+import           Database.Persist      (Key)
 import           Snap.Core             (modifyResponse, redirect,
                                         setResponseCode)
 import           Text.Printf           (printf)
 
 import           Application           (AppHandler)
-import           Helpers               (getEmailParam, getKeyParam,
+import           Helpers.Params        (getEmailParam, getKeyParam,
                                         getPageParam, getRequestBody,
-                                        getTextParam, requireParam, writeJSON)
-import           Models.User           (CreateParams, UpdateParams, deleteUser,
-                                        getDomainUser, insertUser, newUser,
-                                        selectUsers, updateUser)
+                                        getTextParam, requireParam)
+import           Helpers.Responses     (writeJSON)
+import           Models.User           (deleteUser, getUser, insertUser,
+                                        newUser, selectUsers, updateUser)
 import           Schema
 
-instance ToJSON (Entity User) where
-    toJSON  (Entity key (User domainId name email _)) =
-        object [ "id"         .= key
-               , "domain_id"  .= domainId
-               , "name"       .= name
-               , "email"      .= email
-               ]
-
 -- | Get a user link
-userUrl :: Entity User    -- ^ User
-        -> BS.ByteString  -- ^ Returns a link to the user
-userUrl (Entity userId user) = C.pack $ printf "/domains/%v/users/%v" (userDomainId user) userId
+userUrl :: Key Account   -- ^ Account ID
+        -> Key User      -- ^ User ID
+        -> BS.ByteString -- ^ Returns a link to the user
+userUrl accountId userId = C.pack $ printf "/accounts/%v/users/%v" accountId userId
 
--- | The API handler for GET /domains/:domain_id/users
-listUsersApi :: AppHandler ()
-listUsersApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for GET /accounts/:account_id/users
+listUsersHandler :: AppHandler ()
+listUsersHandler = do
+    accountId <- requireParam getKeyParam "account_id"
     filterName <- getTextParam "name"
     filterEmail <- getEmailParam "email"
-    filterAccountId <- getKeyParam "account_id"
     page <- getPageParam
-    users <- selectUsers domainId filterName filterEmail filterAccountId page
-    writeJSON (users :: [Entity User])
+    users <- selectUsers accountId filterName filterEmail page
+    writeJSON users
 
--- | The API handler for GET /domains/:domain_id/users/:user_id
-showUserApi :: AppHandler ()
-showUserApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for GET /accounts/:account_id/users/:user_id
+showUserHandler :: AppHandler ()
+showUserHandler = do
+    accountId <- requireParam getKeyParam "account_id"
     userId <- requireParam getKeyParam "user_id"
-    user <- getDomainUser domainId userId
-    writeJSON (user :: Entity User)
+    user <- getUser accountId userId
+    writeJSON user
 
--- | The API handler for POST/PUT /domains/:domain_id/users
-createUserApi :: AppHandler ()
-createUserApi = do
-    domainId <- requireParam getKeyParam "domain_id"
-    params <- (getRequestBody :: AppHandler CreateParams)
-    user <- newUser domainId params
-    userId <- insertUser user
-    redirect $ userUrl $ Entity userId user
+-- | The API handler for POST/PUT /accounts/:account_id/users
+createUserHandler :: AppHandler ()
+createUserHandler = do
+    accountId <- requireParam getKeyParam "account_id"
+    params <- getRequestBody
+    userId <- newUser accountId params >>= insertUser
+    redirect $ userUrl accountId userId
 
--- | The API handler for POST/PUT /domains/:domain_id/users/:user_id
-updateUserApi :: AppHandler ()
-updateUserApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for POST/PUT /accounts/:account_id/users/:user_id
+updateUserHandler :: AppHandler ()
+updateUserHandler = do
+    accountId <- requireParam getKeyParam "account_id"
     userId <- requireParam getKeyParam "user_id"
-    params <- (getRequestBody :: AppHandler UpdateParams)
-    _ <- getDomainUser domainId userId
+    params <- getRequestBody
+    _ <- getUser accountId userId
     updateUser userId params
     modifyResponse $ setResponseCode 204
 
--- | The API handler for DELETE /domains/:domain_id/users/:user_id
-deleteUserApi :: AppHandler ()
-deleteUserApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for DELETE /accounts/:account_id/users/:user_id
+deleteUserHandler :: AppHandler ()
+deleteUserHandler = do
+    accountId <- requireParam getKeyParam "account_id"
     userId <- requireParam getKeyParam "user_id"
-    _ <- getDomainUser domainId userId
+    _ <- getUser accountId userId
     deleteUser userId
     modifyResponse $ setResponseCode 204

@@ -2,44 +2,30 @@
 
 [![Build Status](https://travis-ci.org/b0d0nne11/hauth.svg?branch=master)](https://travis-ci.org/b0d0nne11/hauth)
 
-Hauth is an open-source user management and authentication application based on
-Haskell's [Snap](http://snapframework.com/) framework.
+A slightly less horrible identity API.
 
 ## Collections
 
-### Domains
-
-Domains are a collection of account, user, and token resources.
-
-Example:
-```json
-{
-  "domain_id": 1,
-  "name": "example.com"
-}
-```
-
 ### Accounts
 
-Accounts represent an individual tenant in a domain. Accounts may have many users.
+An account represents a collection of resources pertaining to a single entity.
 
 Example:
 ```json
 {
-  "domain_id": 1,
-  "account_id": 1,
+  "id": 1,
   "name": "ACME"
 }
 ```
 
 ### Users
 
-Users represent an individual user in a domain. Users may belong to many accounts.
+A user represents an individual person.
 
 Example:
 ```json
 {
-  "domain_id": 1,
+  "account_id": 1,
   "user_id": 1,
   "name": "user1",
   "email": "user1@example.com"

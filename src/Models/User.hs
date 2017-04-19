@@ -3,12 +3,14 @@
 
 -- | This module contains DB accessors pertaining to the 'User' object
 module Models.User (
-    -- * DB accessors
+    -- * Parameters
     CreateParams (..),
     UpdateParams (..),
+    -- * DB accessors
     newUser,
     selectUsers,
-    getDomainUser,
+    getUser,
+    findUserByName,
     insertUser,
     updateUser,
     deleteUser
@@ -21,10 +23,9 @@ import           Data.Aeson              (FromJSON, ToJSON, object, parseJSON,
 import           Data.Aeson.Types        (Value (..))
 import           Data.Maybe              (catMaybes)
 import qualified Data.Text               as T
-import           Database.Esqueleto      (LeftOuterJoin (..), asc, delete, desc,
-                                          distinct, from, insert, limit, on,
-                                          orderBy, select, set, update, val,
-                                          where_, (&&.), (<.), (=.), (==.),
+import           Database.Esqueleto      (asc, delete, desc, from, insert,
+                                          limit, orderBy, select, set, update,
+                                          val, where_, (&&.), (<.), (=.), (==.),
                                           (>.), (^.))
 import           Database.Persist        (Entity (..), Key)
 import           Snap.Snaplet.Persistent (runPersist)
@@ -32,9 +33,20 @@ import           Text.Email.Parser       (EmailAddress)
 import           Text.Printf             (printf)
 
 import           Application             (AppHandler)
-import           Helpers                 (Page (..), encrypt, notFound)
+import           Helpers.Crypto          (encrypt)
+import           Helpers.Responses       (notFound)
+import           Models.Page             (Page (..))
 import           Schema
 
+instance ToJSON (Entity User) where
+    toJSON  (Entity key (User accountId name email _)) =
+        object [ "id"         .= key
+               , "account_id" .= accountId
+               , "name"       .= name
+               , "email"      .= email
+               ]
+
+-- | Create parameters
 data CreateParams = CreateParams
     { _createParamsName  :: T.Text
     , _createParamsEmail :: EmailAddress
@@ -54,10 +66,11 @@ instance ToJSON CreateParams where
                , "password" .= pass
                ]
 
+-- | Update parameters
 data UpdateParams = UpdateParams
-    { updateParamsName  :: Maybe T.Text
-    , updateParamsEmail :: Maybe EmailAddress
-    , updateParamsPass  :: Maybe Pass
+    { _updateParamsName  :: Maybe T.Text
+    , _updateParamsEmail :: Maybe EmailAddress
+    , _updateParamsPass  :: Maybe Pass
     }
 
 instance FromJSON UpdateParams where
@@ -74,44 +87,54 @@ instance ToJSON UpdateParams where
                ]
 
 -- | Create a new user
-newUser :: Key Domain      -- ^ User domain ID
+newUser :: Key Account     -- ^ User account ID
         -> CreateParams    -- ^ User create parameters
         -> AppHandler User -- ^ Returns a new user
-newUser domainId (CreateParams name email pass) = do
+newUser accountId (CreateParams name email pass) = do
     pass' <- encrypt pass
-    return $ User domainId name email pass'
+    return $ User accountId name email pass'
 
 -- | Get a user by ID or finish with a 404 Not Found
-getDomainUser :: Key Domain               -- ^ User domain ID
-              -> Key User                 -- ^ User ID
-              -> AppHandler (Entity User) -- ^ Returns a user
-getDomainUser domainId userId = do
+getUser :: Key Account              -- ^ Account ID
+        -> Key User                 -- ^ User ID
+        -> AppHandler (Entity User) -- ^ Returns a user
+getUser accountId userId = do
     users <- runPersist $ select $
         from $ \u -> do
-            where_ $ u ^. UserDomainId ==. val domainId
-                 &&. u ^. UserId       ==. val userId
+            where_ $ u ^. UserAccountId ==. val accountId
+                 &&. u ^. UserId        ==. val userId
             return u
     case users of
         [u] -> return u
-        _ -> notFound $ printf "user %v in domain %v not found" userId domainId
+        _ -> notFound $ printf "user not found: account_id=%v user_id=%v" accountId userId
+
+-- | Find a user by name or finish with a 404 Not Found
+findUserByName :: Key Account              -- ^ Account ID
+               -> T.Text                   -- ^ User name
+               -> AppHandler (Entity User) -- ^ Returns a user
+findUserByName accountId name = do
+    users <- runPersist $ select $
+        from $ \u -> do
+            where_ $ u ^. UserAccountId ==. val accountId
+                 &&. u ^. UserName      ==. val name
+            return u
+    case users of
+        [u] -> return u
+        _ -> notFound $ printf "user not found: account_id=%v user_name=%v" accountId name
 
 -- | Get a list of users
-selectUsers :: Key Domain                 -- ^ Filter by user domain ID
-            -> Maybe T.Text               -- ^ Optionally filter by user name
-            -> Maybe EmailAddress         -- ^ Optionally filter by user email address
-            -> Maybe (Key Account)        -- ^ Optionally filter by user account ID
-            -> Page User                  -- ^ Pagination parameters
-            -> AppHandler ([Entity User]) -- ^ Returns a list of users
-selectUsers domainId filterName filterEmail filterAccountId page = do
-    users <- runPersist $ select $ distinct $
-        from $ \(u `LeftOuterJoin` au `LeftOuterJoin` a) -> do
-            on $ a ^. AccountId ==. au ^. AccountUserAccountId
-            on $ u ^. UserId    ==. au ^. AccountUserUserId
+selectUsers :: Key Account              -- ^ Filter by user domain ID
+            -> Maybe T.Text             -- ^ Optionally filter by user name
+            -> Maybe EmailAddress       -- ^ Optionally filter by user email address
+            -> Page User                -- ^ Pagination parameters
+            -> AppHandler [Entity User] -- ^ Returns a list of users
+selectUsers accountId filterName filterEmail page =
+    runPersist $ select $
+        from $ \u -> do
             where_ $ foldl (&&.)
-                (u ^. UserDomainId ==. val domainId)
+                (u ^. UserAccountId ==. val accountId)
                 (catMaybes [ (u ^. UserName  ==.) . val <$> filterName
                            , (u ^. UserEmail ==.) . val <$> filterEmail
-                           , (a ^. AccountId ==.) . val <$> filterAccountId
                            , (u ^. UserId     <.) . val <$> pageBefore page
                            , (u ^. UserId     >.) . val <$> pageAfter page
                            ]
@@ -121,33 +144,31 @@ selectUsers domainId filterName filterEmail filterAccountId page = do
                 else orderBy [desc (u ^. UserId)]
             limit $ pageLimit page
             return u
-    return users
 
--- | Insert a user record
+-- | Insert a user
 insertUser :: User                  -- ^ User to insert
            -> AppHandler (Key User) -- ^ Returns a user ID
-insertUser user = do
+insertUser user =
     runPersist $ insert user
 
--- | Update a user record
+-- | Update a user
 updateUser :: Key User     -- ^ User ID
            -> UpdateParams -- ^ User update parameters
            -> AppHandler ()
 updateUser _ (UpdateParams Nothing Nothing Nothing) = return ()
-updateUser userId params = do
-    pass' <- mapM encrypt $ updateParamsPass params
+updateUser userId (UpdateParams mName mEmail mPass) = do
+    mPass' <- mapM encrypt mPass
     runPersist $ update $ \u -> do
-        set u $ catMaybes [ (UserName              =.) . val <$> updateParamsName params
-                          , (UserEmail             =.) . val <$> updateParamsEmail params
-                          , (UserEncryptedPassword =.) . val <$> pass'
+        set u $ catMaybes [ (UserName     =.) . val <$> mName
+                          , (UserEmail    =.) . val <$> mEmail
+                          , (UserPassword =.) . val <$> mPass'
                           ]
         where_ $ u ^. UserId ==. val userId
 
--- | Delete a user record
+-- | Delete a user
 deleteUser :: Key User -- ^ User ID
            -> AppHandler ()
-deleteUser userId = do
-    runPersist $ delete $ from $ \au -> do
-        where_ $ au ^. AccountUserUserId ==. val userId
-    runPersist $ delete $ from $ \u -> do
-        where_ $ u ^. UserId ==. val userId
+deleteUser userId =
+    runPersist $ delete $
+        from $ \u ->
+            where_ $ u ^. UserId ==. val userId

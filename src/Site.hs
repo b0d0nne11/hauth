@@ -21,47 +21,39 @@ import           Snap.Util.FileServe     (serveDirectory)
 
 import           Application
 import           Handlers.Account
-import           Handlers.Domain
 import           Handlers.Token
 import           Handlers.User
 import           Schema
 
 -- | The application's routes.
 routes :: [(ByteString, AppHandler ())]
-routes = [ ("/domains",
-            method GET listDomainsApi
-            <|> methods [POST, PUT] createDomainApi)
-         , ("/domains/:domain_id",
-            method GET showDomainApi
-            <|> methods [POST, PUT] updateDomainApi
-            <|> method DELETE deleteDomainApi)
-         , ("/domains/:domain_id/accounts",
-            method GET listAccountsApi
-            <|> methods [POST, PUT] createAccountApi)
-         , ("/domains/:domain_id/accounts/:account_id",
-            method GET showAccountApi
-            <|> methods [POST, PUT] updateAccountApi
-            <|> method DELETE deleteAccountApi)
-         , ("/domains/:domain_id/users",
-            method GET listUsersApi
-            <|> methods [POST, PUT] createUserApi)
-         , ("/domains/:domain_id/users/:user_id",
-            method GET showUserApi
-            <|> methods [POST, PUT] updateUserApi
-            <|> method DELETE deleteUserApi)
-         , ("/domains/:domain_id/tokens",
-            method POST authenticateApi)
-         , ("/domains/:domain_id/tokens/:token",
-            method GET validateApi)
+routes = [ ("/accounts",
+            method GET listAccountsHandler
+            <|> methods [POST, PUT] createAccountHandler)
+         , ("/accounts/:account_id",
+            method GET showAccountHandler
+            <|> methods [POST, PUT] updateAccountHandler
+            <|> method DELETE deleteAccountHandler)
+         , ("/accounts/:account_id/users",
+            method GET listUsersHandler
+            <|> methods [POST, PUT] createUserHandler)
+         , ("/accounts/:account_id/users/:user_id",
+            method GET showUserHandler
+            <|> methods [POST, PUT] updateUserHandler
+            <|> method DELETE deleteUserHandler)
+         , ("/accounts/:account_id/tokens",
+            method POST authenticateTokenHandler)
+         , ("/accounts/:account_id/tokens/:token",
+            method GET validateTokenHandler)
          , ("", serveDirectory "static")
          ]
 
 -- | The application initializer.
 app :: SnapletInit App App
-app = makeSnaplet "app" "An snaplet example application." Nothing $ do
+app = makeSnaplet "hauth" "A slightly less horrible identity API." Nothing $ do
     h <- nestSnaplet "" heist $ heistInit "templates"
-    j <- nestSnaplet "jwt" jwt jwtInit
-    p <- nestSnaplet "persist" persist $ initPersist (runMigrationUnsafe migrateAll)
+    j <- nestSnaplet "" jwt jwtInit
+    p <- nestSnaplet "" persist $ initPersist (runMigrationUnsafe migrateAll)
     wrapCORS
     addRoutes routes
     return $ App h j p
