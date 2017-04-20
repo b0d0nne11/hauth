@@ -23,6 +23,8 @@ import           Text.Printf          (PrintfArg, errorBadFormat, fmtChar,
 
 import           Snap.Snaplet.JWT     as JWT
 
+-- Printf arguments
+
 instance PrintfArg JWT.Error where
     formatArg x fmt
         | fmtChar fmt == 's' = formatString (show x) fmt
@@ -42,6 +44,8 @@ instance ToBackendKey SqlBackend record => PrintfArg (Unique record) where
         | fmtChar fmt == 'v' = formatString (show $ persistUniqueToValues x) fmt
         | otherwise          = errorBadFormat $ fmtChar fmt
 
+-- JSON
+
 instance FromJSON BS.ByteString where
     parseJSON (String v) = pure $ encodeUtf8 v
     parseJSON unknown = typeMismatch "ByteString" unknown
@@ -56,6 +60,15 @@ instance FromJSON Pass where
 instance ToJSON Pass where
     toJSON = String . decodeUtf8 . getPass
 
+instance FromJSON EmailAddress where
+    parseJSON (String v) = either fail pure $ validate $ encodeUtf8 v
+    parseJSON unknown = typeMismatch "EmailAddress" unknown
+
+instance ToJSON EmailAddress where
+    toJSON = String . decodeUtf8 . toByteString
+
+-- SQL fields
+
 instance PersistFieldSql EncryptedPass where
     sqlType _ = SqlBlob
 
@@ -64,13 +77,6 @@ instance PersistField EncryptedPass where
 
     fromPersistValue (PersistByteString pass) = Right $ EncryptedPass pass
     fromPersistValue _ = Left "EncryptedPass must be converted from PersistByteString"
-
-instance FromJSON EmailAddress where
-    parseJSON (String v) = either fail pure $ validate $ encodeUtf8 v
-    parseJSON unknown = typeMismatch "EmailAddress" unknown
-
-instance ToJSON EmailAddress where
-    toJSON = String . decodeUtf8 . toByteString
 
 instance PersistFieldSql EmailAddress where
     sqlType _ = SqlBlob

@@ -11,12 +11,13 @@ import           Crypto.Scrypt       (Pass)
 import           Data.Aeson          (FromJSON, ToJSON, object, parseJSON,
                                       toJSON, (.:), (.=))
 import           Data.Aeson.Types    (Value (..))
-import qualified Data.Text           as T
+import           Data.Text           (Text)
 
 import           Schema              ()
 
+-- | Authentication parameters
 data AuthParams = AuthParams
-    { _authParamsName :: T.Text
+    { _authParamsName :: Text
     , _authParamsPass :: Pass
     }
 

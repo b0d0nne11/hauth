@@ -3,38 +3,44 @@
 
 -- | This module contains DB accessors pertaining to the 'Account' object
 module Models.Account (
-    -- * DB accessors
+    -- * Parameters
     CreateParams (..),
     UpdateParams (..),
+    -- * DB accessors
     newAccount,
     selectAccounts,
-    getDomainAccount,
+    getAccount,
     insertAccount,
     updateAccount,
-    updateAccountUsers,
     deleteAccount
   ) where
 
 import           Control.Applicative     (empty)
-import           Control.Monad           (forM_)
 import           Data.Aeson              (FromJSON, ToJSON, object, parseJSON,
                                           toJSON, (.:), (.:?), (.=))
 import           Data.Aeson.Types        (Value (..))
-import           Data.Maybe              (catMaybes, fromMaybe)
+import           Data.Maybe              (catMaybes)
 import qualified Data.Text               as T
-import           Database.Esqueleto      (LeftOuterJoin (..), asc, delete, desc,
-                                          distinct, from, insert, limit, on,
-                                          orderBy, select, set, update, val,
-                                          where_, (&&.), (<.), (=.), (==.),
+import           Database.Esqueleto      (asc, delete, desc, from, insert,
+                                          limit, orderBy, select, set, update,
+                                          val, where_, (&&.), (<.), (=.), (==.),
                                           (>.), (^.))
 import           Database.Persist        (Entity (..), Key)
 import           Snap.Snaplet.Persistent (runPersist)
 import           Text.Printf             (printf)
 
 import           Application             (AppHandler)
-import           Helpers                 (Page (..), notFound)
+import           Helpers.Responses       (notFound)
+import           Models.Page             (Page (..))
 import           Schema
 
+instance ToJSON (Entity Account) where
+    toJSON  (Entity key (Account name)) =
+        object [ "id"   .= key
+               , "name" .= name
+               ]
+
+-- | Create parameters
 data CreateParams = CreateParams
     { _createParamsName :: T.Text }
 
@@ -46,61 +52,45 @@ instance ToJSON CreateParams where
     toJSON (CreateParams name) =
         object [ "name" .= name ]
 
+-- | Update parameters
 data UpdateParams = UpdateParams
-    { updateParamsName      :: Maybe T.Text
-    , updateParamsLinkUsers :: Maybe [Key User]
-    , updateParamsDropUsers :: Maybe [Key User]
-    }
+    { _updateParamsName :: Maybe T.Text }
 
 instance FromJSON UpdateParams where
     parseJSON (Object v) = UpdateParams <$> v .:? "name"
-                                        <*> v .:? "link_users"
-                                        <*> v .:? "drop_users"
     parseJSON _ = empty
 
 instance ToJSON UpdateParams where
-    toJSON (UpdateParams name linkUsers dropUsers) =
-        object [ "name"       .= name
-               , "link_users" .= linkUsers
-               , "drop_users" .= dropUsers
-               ]
+    toJSON (UpdateParams name) =
+        object [ "name" .= name ]
 
 -- | Create a new account
-newAccount :: Key Domain   -- ^ Account domain ID
-           -> CreateParams -- ^ Account create parameters
-           -> Account      -- ^ Returns a new account
-newAccount domainId (CreateParams name) =
-    Account domainId name
+newAccount :: CreateParams       -- ^ Account create parameters
+           -> AppHandler Account -- ^ Returns a new account
+newAccount (CreateParams name) = return $ Account name
 
 -- | Get an account by ID or finish with a 404 Not Found
-getDomainAccount :: Key Domain                  -- ^ Account domain ID
-                 -> Key Account                 -- ^ Account ID
-                 -> AppHandler (Entity Account) -- ^ Returns an account
-getDomainAccount domainId accountId = do
+getAccount :: Key Account                 -- ^ Account ID
+           -> AppHandler (Entity Account) -- ^ Returns an account
+getAccount accountId = do
     accounts <- runPersist $ select $
         from $ \a -> do
-            where_ $ a ^. AccountDomainId ==. val domainId
-                 &&. a ^. AccountId       ==. val accountId
+            where_ $ a ^. AccountId ==. val accountId
             return a
     case accounts of
         [a] -> return a
-        _ -> notFound $ printf "account %v in domain %v not found" accountId domainId
+        _ -> notFound $ printf "account not found: account_id=%v" accountId
 
 -- | Get a list of accounts
-selectAccounts :: Key Domain                  -- ^ Filter by account domain ID
-               -> Maybe T.Text                -- ^ Optionally filter by account name
-               -> Maybe (Key User)            -- ^ Optionally filter by account user ID
+selectAccounts :: Maybe T.Text                -- ^ Optionally filter by account name
                -> Page Account                -- ^ Pagination parameters
                -> AppHandler [Entity Account] -- ^ Returns a list of accounts
-selectAccounts domainId filterName filterUserId page = do
-    accounts <- runPersist $ select $ distinct $
-        from $ \(a `LeftOuterJoin` au `LeftOuterJoin` u) -> do
-            on $ u ^. UserId    ==. au ^. AccountUserUserId
-            on $ a ^. AccountId ==. au ^. AccountUserAccountId
+selectAccounts filterName page =
+    runPersist $ select $
+        from $ \a -> do
             where_ $ foldl (&&.)
-                (a ^. AccountDomainId ==. val domainId)
+                (val True)
                 (catMaybes [ (a ^. AccountName ==.) . val <$> filterName
-                           , (u ^. UserId      ==.) . val <$> filterUserId
                            , (a ^. AccountId    <.) . val <$> pageBefore page
                            , (a ^. AccountId    >.) . val <$> pageAfter page
                            ]
@@ -110,47 +100,27 @@ selectAccounts domainId filterName filterUserId page = do
                 else orderBy [desc (a ^. AccountId)]
             limit $ pageLimit page
             return a
-    return accounts
 
--- | Insert an account record
+-- | Insert an account
 insertAccount :: Account                  -- ^ Account to insert
               -> AppHandler (Key Account) -- ^ Returns an account ID
-insertAccount account = do
+insertAccount account =
     runPersist $ insert account
 
--- | Update an account record
+-- | Update an account
 updateAccount :: Key Account   -- ^ Account ID
               -> UpdateParams  -- ^ Account update parameters
               -> AppHandler ()
-updateAccount _ (UpdateParams Nothing _ _) = return ()
-updateAccount accountId params = do
+updateAccount _ (UpdateParams Nothing) = return ()
+updateAccount accountId (UpdateParams mName) =
     runPersist $ update $ \a -> do
-        set a $ catMaybes [ (AccountName =.) . val <$> updateParamsName params ]
+        set a $ catMaybes [ (AccountName =.) . val <$> mName ]
         where_ $ a ^. AccountId ==. val accountId
 
--- | Update account user membership
-updateAccountUsers :: Key Account   -- ^ Account ID
-                   -> UpdateParams  -- ^ Account update parameters
-                   -> AppHandler ()
-updateAccountUsers accountId params = do
-    forM_ (fromMaybe [] $ updateParamsLinkUsers params) $ \userId -> do
-        rows <- runPersist $ select $ from $ \au -> do
-            where_ $ au ^. AccountUserAccountId ==. val accountId
-                 &&. au ^. AccountUserUserId    ==. val userId
-            return au
-        case rows of
-            [Entity key _] -> return key
-            _ -> runPersist $ insert $ AccountUser accountId userId
-    forM_ (fromMaybe [] $ updateParamsDropUsers params) $ \userId -> do
-        runPersist $ delete $ from $ \au -> do
-            where_ $ au ^. AccountUserAccountId ==. val accountId
-                 &&. au ^. AccountUserUserId    ==. val userId
-
--- | Delete an account record
+-- | Delete an account
 deleteAccount :: Key Account -- ^ Account ID
               -> AppHandler ()
-deleteAccount accountId = do
-    runPersist $ delete $ from $ \au -> do
-        where_ $ au ^. AccountUserAccountId ==. val accountId
-    runPersist $ delete $ from $ \a -> do
-        where_ $ a ^. AccountId ==. val accountId
+deleteAccount accountId =
+    runPersist $ delete $
+        from $ \a ->
+            where_ $ a ^. AccountId ==. val accountId

@@ -16,16 +16,18 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Application
-                     , Helpers
                      , Schema
                      , Site
                      , Types
                      , Models.Account
-                     , Models.Domain
                      , Models.User
                      , Models.Token
+                     , Models.Page
+                     , Helpers.Crypto
+                     , Helpers.DB
+                     , Helpers.Params
+                     , Helpers.Responses
                      , Handlers.Account
-                     , Handlers.Domain
                      , Handlers.Token
                      , Handlers.User
   build-depends:       base
@@ -68,8 +70,7 @@ test-suite hauth-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Handlers.DomainSpec
-                     , Handlers.TokenSpec
+  other-modules:       Handlers.TokenSpec
                      , Handlers.AccountSpec
                      , Handlers.UserSpec
   build-depends:       base

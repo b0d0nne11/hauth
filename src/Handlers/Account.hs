@@ -4,88 +4,72 @@
 -- | This module contains API handlers pertaining to the 'Account' object
 module Handlers.Account (
     -- * API handlers
-    listAccountsApi,
-    showAccountApi,
-    createAccountApi,
-    updateAccountApi,
-    deleteAccountApi,
+    listAccountsHandler,
+    showAccountHandler,
+    createAccountHandler,
+    updateAccountHandler,
+    deleteAccountHandler,
     -- * Utility functions
     accountUrl
   ) where
 
-import           Data.Aeson            (ToJSON, object, toJSON, (.=))
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as C
-import           Database.Persist      (Entity (..))
+import           Database.Persist      (Key)
 import           Snap.Core             (modifyResponse, redirect,
                                         setResponseCode)
 import           Text.Printf           (printf)
 
 import           Application           (AppHandler)
-import           Helpers               (getKeyParam, getPageParam,
+import           Helpers.Params        (getKeyParam, getPageParam,
                                         getRequestBody, getTextParam,
-                                        requireParam, writeJSON)
-import           Models.Account        (CreateParams, UpdateParams,
-                                        deleteAccount, getDomainAccount,
+                                        requireParam)
+import           Helpers.Responses     (writeJSON)
+import           Models.Account        (deleteAccount, getAccount,
                                         insertAccount, newAccount,
-                                        selectAccounts, updateAccount,
-                                        updateAccountUsers)
+                                        selectAccounts, updateAccount)
 import           Schema
 
-instance ToJSON (Entity Account) where
-    toJSON  (Entity key (Account domainId name)) =
-        object [ "id"         .= key
-               , "domain_id"  .= domainId
-               , "name"       .= name
-               ]
-
 -- | Get an account link
-accountUrl :: Entity Account -- ^ Account
-           -> BS.ByteString  -- ^ Returns a link to the account
-accountUrl (Entity accountId account) = C.pack $ printf "/domains/%v/accounts/%v" (accountDomainId account) accountId
+accountUrl :: Key Account   -- ^ Account ID
+           -> BS.ByteString -- ^ Returns a link to the account
+accountUrl accountId = C.pack $ printf "/accounts/%v" accountId
 
--- | The API handler for GET /domains/:domain_id/accounts
-listAccountsApi :: AppHandler ()
-listAccountsApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for GET /accounts
+listAccountsHandler :: AppHandler ()
+listAccountsHandler = do
     filterName <- getTextParam "name"
-    filterUserId <- getKeyParam "user_id"
     page <- getPageParam
-    accounts <- selectAccounts domainId filterName filterUserId page
-    writeJSON (accounts :: [Entity Account])
+    accounts <- selectAccounts filterName page
+    writeJSON accounts
 
--- | The API handler for GET /domains/:domain_id/accounts/:account_id
-showAccountApi :: AppHandler ()
-showAccountApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for GET /accounts/:account_id
+showAccountHandler :: AppHandler ()
+showAccountHandler = do
     accountId <- requireParam getKeyParam "account_id"
-    account <- getDomainAccount domainId accountId
-    writeJSON (account :: Entity Account)
+    account <- getAccount accountId
+    writeJSON account
 
--- | The API handler for POST/PUT /domains/:domain_id/accounts
-createAccountApi :: AppHandler ()
-createAccountApi = do
-    account <- newAccount <$> requireParam getKeyParam "domain_id"
-                          <*> (getRequestBody :: AppHandler CreateParams)
-    accountId <- insertAccount account
-    redirect $ accountUrl $ Entity accountId account
+-- | The API handler for POST/PUT /accounts
+createAccountHandler :: AppHandler ()
+createAccountHandler = do
+    params <- getRequestBody
+    accountId <- newAccount params >>= insertAccount
+    redirect $ accountUrl accountId
 
--- | The API handler for POST/PUT /domains/:domain_id/accounts/:account_id
-updateAccountApi :: AppHandler ()
-updateAccountApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for POST/PUT /accounts/:account_id
+updateAccountHandler :: AppHandler ()
+updateAccountHandler = do
     accountId <- requireParam getKeyParam "account_id"
-    params <- (getRequestBody :: AppHandler UpdateParams)
-    _ <- getDomainAccount domainId accountId
+    params <- getRequestBody
+    _ <- getAccount accountId
     updateAccount accountId params
-    updateAccountUsers accountId params
     modifyResponse $ setResponseCode 204
 
--- | The API handler for DELETE /domains/:domain_id/accounts/:account_id
-deleteAccountApi :: AppHandler ()
-deleteAccountApi = do
-    domainId <- requireParam getKeyParam "domain_id"
+-- | The API handler for DELETE /accounts/:account_id
+deleteAccountHandler :: AppHandler ()
+deleteAccountHandler = do
     accountId <- requireParam getKeyParam "account_id"
-    _ <- getDomainAccount domainId accountId
+    _ <- getAccount accountId
     deleteAccount accountId
     modifyResponse $ setResponseCode 204
