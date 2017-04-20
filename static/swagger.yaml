@@ -2,7 +2,7 @@ swagger: '2.0'
 info:
   title: Hauth API
   description: A slightly less horrible identity API.
-  version: "0.1.0"
+  version: "0.2.0"
 host: localhost:8080
 schemes:
   - http
