@@ -61,7 +61,7 @@ Install the compiled executable in `/usr/local/bin` with:
 sudo make install
 ```
 
-Cleanup the stack build space with:
+Cleanup the project with:
 ```bash
 make clean
 ```
@@ -70,40 +70,31 @@ make clean
 
 Build a docker container with:
 ```bash
-make docker
+make container
 ```
 
-Start the docker container and dependancies with:
+Start the application container and any dependancies with:
 ```bash
-docker-compose up -d
+docker-compose up
 ```
 
-This will by default create an application, database, and Swagger-UI container.
-
-Or run just the application container with:
+Or start the application container only with:
 ```bash
 docker run --name hauth -p 8080:8080 b0d0nne11/hauth:latest
 ```
 
- The application container's default command will run the API process using the
- `docker` environment. As a result, the process will use the configuration
- files at `snaplets/*/docker.cfg`. Use volume mounts to override them if
- neccesary.
+The application container's default command will run the API process using the
+`docker` environment. As a result, the process will use the configuration files
+at `snaplets/*/docker.cfg`. The environment name can be overridden using the
+`HAUTH_ENV` environment variable. If neccesary, volume mounts can be used to
+alter the configuration file contents.
 
 ## Documentation
 
-The documentation is provided in several parts.
-
-The module documentation is written inline with the code using
-[Haddock](https://www.haskell.org/haddock/). You can compile it with:
+The documentation is provided in several parts. The module specification is
+written in the source code using [Haddock](https://www.haskell.org/haddock/).
+The API specification is written using [Swagger](http://swagger.io/). To build
+and view the documentation simply run:
 ```bash
-make haddock
-```
-
-The HTTP API specification is written using the [Swagger](http://swagger.io/)
-framework and is located at `static/swagger.yaml`. It is available from the web
-interface at `/swagger.yaml` or to explore using a swagger-ui interface by
-running:
-```bash
-make swagger
+make docs
 ```

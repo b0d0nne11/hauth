@@ -1,5 +1,5 @@
 build_path   := $(shell stack path --local-install-root)/bin/hauth-exe
-install_path := $(shell stack path --local-bin)/hauth-exe
+install_path := /usr/local/bin/hauth-exe
 doc_path     := $(shell stack path --local-doc-root)/index.html
 project_root := $(shell stack path --project-root)
 version      := $(shell stack query locals hauth version | tr -d "'")
