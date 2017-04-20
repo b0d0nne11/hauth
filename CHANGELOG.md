@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Fixed a SQL exception when inserting records that fail unique constraints
 
 ## [0.2.0] - 2017-04-19
 ### Added

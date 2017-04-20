@@ -21,7 +21,7 @@ import           Data.Aeson              (FromJSON, ToJSON, object, parseJSON,
 import           Data.Aeson.Types        (Value (..))
 import           Data.Maybe              (catMaybes)
 import qualified Data.Text               as T
-import           Database.Esqueleto      (asc, delete, desc, from, insert,
+import           Database.Esqueleto      (asc, delete, desc, from, insertUnique,
                                           limit, orderBy, select, set, update,
                                           val, where_, (&&.), (<.), (=.), (==.),
                                           (>.), (^.))
@@ -30,7 +30,7 @@ import           Snap.Snaplet.Persistent (runPersist)
 import           Text.Printf             (printf)
 
 import           Application             (AppHandler)
-import           Helpers.Responses       (notFound)
+import           Helpers.Responses       (badRequest, notFound)
 import           Models.Page             (Page (..))
 import           Schema
 
@@ -104,8 +104,9 @@ selectAccounts filterName page =
 -- | Insert an account
 insertAccount :: Account                  -- ^ Account to insert
               -> AppHandler (Key Account) -- ^ Returns an account ID
-insertAccount account =
-    runPersist $ insert account
+insertAccount account = do
+    mAccountId <- runPersist $ insertUnique account
+    maybe (badRequest "account fails unique constraints") return mAccountId
 
 -- | Update an account
 updateAccount :: Key Account   -- ^ Account ID

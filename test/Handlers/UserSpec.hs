@@ -73,11 +73,14 @@ spec = snap (route routes) app $ beforeEval fixtures $ afterEval resetDB $ do
             get "/accounts/4/users/1" >>= (`shouldEqual` NotFound)
             get "/accounts/4/users/4" >>= (`shouldEqual` NotFound)
 
-    describe "createUser" $
+    describe "createUser" $ do
         it "creates a user and returns a 302 Found" $ do
             get "/accounts/1/users/4" >>= (`shouldEqual` NotFound)
             postJson "/accounts/1/users" (User.CreateParams "user4" (fromJust $ emailAddress "user4@example.com") (Pass "password")) >>= (`shouldEqual` Redirect 302 "/accounts/1/users/4")
             get "/accounts/1/users/4" >>= (`shouldEqual` Json 200 "{\"email\":\"user4@example.com\",\"name\":\"user4\",\"id\":4,\"account_id\":1}")
+        it "returns a 400 Bad Request when user name is not unique in domain" $ do
+            postJson "/accounts/1/users" (User.CreateParams "user4" (fromJust $ emailAddress "user4@example.com") (Pass "password")) >>= (`shouldEqual` Redirect 302 "/accounts/1/users/4")
+            postJson "/accounts/1/users" (User.CreateParams "user4" (fromJust $ emailAddress "user4@example.com") (Pass "password")) >>= (`shouldEqual` Other 400)
 
     describe "updateUser" $ do
         it "updates a user and returns a 204 No Content" $ do

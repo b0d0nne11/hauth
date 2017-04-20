@@ -23,7 +23,7 @@ import           Data.Aeson              (FromJSON, ToJSON, object, parseJSON,
 import           Data.Aeson.Types        (Value (..))
 import           Data.Maybe              (catMaybes)
 import qualified Data.Text               as T
-import           Database.Esqueleto      (asc, delete, desc, from, insert,
+import           Database.Esqueleto      (asc, delete, desc, from, insertUnique,
                                           limit, orderBy, select, set, update,
                                           val, where_, (&&.), (<.), (=.), (==.),
                                           (>.), (^.))
@@ -34,7 +34,7 @@ import           Text.Printf             (printf)
 
 import           Application             (AppHandler)
 import           Helpers.Crypto          (encrypt)
-import           Helpers.Responses       (notFound)
+import           Helpers.Responses       (badRequest, notFound)
 import           Models.Page             (Page (..))
 import           Schema
 
@@ -148,8 +148,9 @@ selectUsers accountId filterName filterEmail page =
 -- | Insert a user
 insertUser :: User                  -- ^ User to insert
            -> AppHandler (Key User) -- ^ Returns a user ID
-insertUser user =
-    runPersist $ insert user
+insertUser user = do
+    mUserId <- runPersist $ insertUnique user
+    maybe (badRequest "user fails unique constraints") return mUserId
 
 -- | Update a user
 updateUser :: Key User     -- ^ User ID

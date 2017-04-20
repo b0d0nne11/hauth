@@ -61,11 +61,14 @@ spec = snap (route routes) app $ beforeEval fixtures $ afterEval resetDB $ do
         it "returns a 404 Not Found when account is not found" $
             get "/accounts/4" >>= (`shouldEqual` NotFound)
 
-    describe "createAccount" $
+    describe "createAccount" $ do
         it "creates a account and returns a 302 Found" $ do
             get "/accounts/4" >>= (`shouldEqual` NotFound)
             postJson "/accounts" (Account.CreateParams "account4") >>= (`shouldEqual` Redirect 302 "/accounts/4")
             get "/accounts/4" >>= (`shouldEqual` Json 200 "{\"name\":\"account4\",\"id\":4}")
+        it "returns a 400 Bad Request when account name is not unique" $ do
+            postJson "/accounts" (Account.CreateParams "account4") >>= (`shouldEqual` Redirect 302 "/accounts/4")
+            postJson "/accounts" (Account.CreateParams "account4") >>= (`shouldEqual` Other 400)
 
     describe "updateAccount" $ do
         it "updates a account and returns a 204 No Content" $ do
